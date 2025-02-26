@@ -74,6 +74,19 @@ class FureiADieta {
         // Adicionar debounce para análise
         this.debounceTimeout = null;
 
+        // Detectar tecla Alt
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Alt') {
+                document.body.classList.add('alt-pressed');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Alt') {
+                document.body.classList.remove('alt-pressed');
+            }
+        });
+
         this.inicializar();
     }
 

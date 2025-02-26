@@ -1201,17 +1201,23 @@ body.dark-mode .salvar-btn.disabled {
 .limpar-cache {
     position: fixed;
     bottom: 10px;
-    right: 10px;
-    opacity: 0.1;
-    font-size: 10px;
-    padding: 5px;
+    left: 10px;
+    opacity: 0;
+    font-size: 8px;
+    padding: 4px;
     background: none;
     border: none;
-    cursor: pointer;
+    cursor: default;
     color: inherit;
     transition: opacity 0.3s;
+    z-index: 9999;
 }
 
-.limpar-cache:hover {
+body.alt-pressed .limpar-cache {
+    opacity: 0.1;
+    cursor: pointer;
+}
+
+body.alt-pressed .limpar-cache:hover {
     opacity: 0.5;
 }
