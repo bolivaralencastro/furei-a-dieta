@@ -2,6 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Furei a Dieta</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500&display=swap" rel="stylesheet">
@@ -14,6 +15,30 @@
             <button id="toggleTheme">🌙</button>
         </div>
     </header>
+
+    <!-- Dialog de boas-vindas -->
+    <div class="dialog-overlay" id="welcomeDialog">
+        <div class="dialog">
+            <h2>Bem-vindo ao Furei a Dieta! 🍽️</h2>
+            <div class="dialog-content">
+                <p>Oi! Que bom te ver por aqui! 💖</p>
+                <p>Esse é um espaço seguro e sem julgamentos para registrar aqueles momentos em que a gente não resistiu a uma tentação.</p>
+                
+                <div class="instruction">
+                    <strong>Como funciona:</strong>
+                    <ul>
+                        <li>🕐 Pressione e segure o pratinho por 2 segundos</li>
+                        <li>📝 Uma notinha será criada com a data</li>
+                        <li>🎯 Arraste as notas pela tela</li>
+                        <li>📅 Acompanhe seu progresso no calendário</li>
+                    </ul>
+                </div>
+                
+                <p class="motivation">Lembre-se: pequenos deslizes não definem sua jornada. O importante é seguir em frente! 💪</p>
+            </div>
+            <button class="dialog-button" id="startButton">Vamos começar!</button>
+        </div>
+    </div>
 
     <main>
         <button id="btnPrato" class="prato">🍽️</button>

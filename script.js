@@ -7,6 +7,16 @@ class FureiADieta {
         this.pressionando = false;
         this.timerPressao = null;
         this.diasMarcados = new Set();
+        this.welcomeDialog = document.getElementById('welcomeDialog');
+        this.startButton = document.getElementById('startButton');
+
+        // Verificar se é a primeira visita
+        if (!localStorage.getItem('visitedBefore')) {
+            this.mostrarDialogoInicial();
+        } else {
+            // Se não for a primeira visita, esconder o diálogo
+            this.welcomeDialog.style.display = 'none';
+        }
 
         this.inicializar();
     }
@@ -341,6 +351,25 @@ class FureiADieta {
                 }
             });
         }
+    }
+
+    mostrarDialogoInicial() {
+        // Garantir que o diálogo esteja visível
+        this.welcomeDialog.style.display = 'flex';
+        document.body.classList.add('dialog-open');
+        
+        this.startButton.addEventListener('click', () => {
+            // Animar a saída do diálogo
+            this.welcomeDialog.style.opacity = '0';
+            document.body.classList.remove('dialog-open');
+            
+            setTimeout(() => {
+                this.welcomeDialog.style.display = 'none';
+            }, 300);
+            
+            // Marcar que o usuário já visitou
+            localStorage.setItem('visitedBefore', 'true');
+        });
     }
 }
 
