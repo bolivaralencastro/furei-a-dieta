@@ -24,6 +24,16 @@ const ALIMENTOS_DB = {
 
 class FureiADieta {
     constructor() {
+        // Versão do app para controle de cache
+        this.VERSION = '1.0.0';
+        
+        // Verificar se precisa atualizar (não limpar)
+        const savedVersion = localStorage.getItem('app_version');
+        if (savedVersion !== this.VERSION) {
+            this.atualizarApp(savedVersion);
+            localStorage.setItem('app_version', this.VERSION);
+        }
+
         this.btnPrato = document.getElementById('btnPrato');
         this.toggleTheme = document.getElementById('toggleTheme');
         this.resetBtn = document.getElementById('resetBtn');
@@ -65,6 +75,55 @@ class FureiADieta {
         this.debounceTimeout = null;
 
         this.inicializar();
+    }
+
+    atualizarApp(versaoAntiga) {
+        // Aqui podemos fazer migrações de dados se necessário
+        console.log(`Atualizando app da versão ${versaoAntiga || 'inicial'} para ${this.VERSION}`);
+
+        // Exemplo de migração de dados:
+        // if (versaoAntiga === '0.9.0') {
+        //     this.migrarDadosAntigos();
+        // }
+
+        // Manter dados existentes
+        this.diasMarcados = new Set(JSON.parse(localStorage.getItem('diasMarcados') || '[]'));
+        this.analisesPorNota = new Map(JSON.parse(localStorage.getItem('analises') || '[]'));
+        
+        // Notificar usuário sobre a atualização
+        this.mostrarNotificacaoAtualizacao();
+    }
+
+    mostrarNotificacaoAtualizacao() {
+        const notificacao = document.createElement('div');
+        notificacao.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff4444;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(255, 68, 68, 0.2);
+            animation: slideUp 0.3s ease-out;
+            z-index: 9999;
+        `;
+        
+        notificacao.innerHTML = `
+            ✨ App atualizado com novidades! 
+            <span style="opacity: 0.8; margin-left: 8px; font-size: 0.8rem;">
+                Seus dados estão seguros 💝
+            </span>
+        `;
+
+        document.body.appendChild(notificacao);
+
+        setTimeout(() => {
+            notificacao.style.animation = 'slideDown 0.3s ease-out forwards';
+            setTimeout(() => notificacao.remove(), 300);
+        }, 5000);
     }
 
     inicializar() {
