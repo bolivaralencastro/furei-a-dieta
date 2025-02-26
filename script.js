@@ -1,3 +1,27 @@
+const ALIMENTOS_DB = {
+    'brigadeiro': { calorias: 130, emoji: '🍫' },
+    'chocolate': { calorias: 545, emoji: '🍫' },
+    'sorvete': { calorias: 207, emoji: '🍦' },
+    'pizza': { calorias: 266, emoji: '🍕' },
+    'hamburguer': { calorias: 295, emoji: '🍔' },
+    'batata frita': { calorias: 312, emoji: '🍟' },
+    'bolo': { calorias: 257, emoji: '🍰' },
+    'refrigerante': { calorias: 37, emoji: '🥤' },
+    'cerveja': { calorias: 43, emoji: '🍺' },
+    'vinho': { calorias: 83, emoji: '🍷' },
+    'doce': { calorias: 100, emoji: '🍬' },
+    'pudim': { calorias: 147, emoji: '🍮' },
+    'pastel': { calorias: 251, emoji: '🥟' },
+    'coxinha': { calorias: 279, emoji: '🍗' },
+    'pão': { calorias: 264, emoji: '🍞' },
+    'queijo': { calorias: 402, emoji: '🧀' },
+    'bacon': { calorias: 541, emoji: '🥓' },
+    'biscoito': { calorias: 138, emoji: '🍪' },
+    'cookie': { calorias: 138, emoji: '🍪' },
+    'macarrão': { calorias: 131, emoji: '🍝' },
+    'lasanha': { calorias: 132, emoji: '🍝' }
+};
+
 class FureiADieta {
     constructor() {
         this.btnPrato = document.getElementById('btnPrato');
@@ -12,8 +36,18 @@ class FureiADieta {
         this.primeiraNotaCriada = localStorage.getItem('primeiraNotaCriada') === 'true';
         this.primeiroReset = true;
         this.resetDialog = document.getElementById('resetDialog');
+        this.resetDialog.style.display = 'none';
         this.confirmResetBtn = document.getElementById('confirmReset');
         this.cancelResetBtn = document.getElementById('cancelReset');
+        this.painelAnotacao = document.getElementById('painelAnotacao');
+        this.overlay = document.createElement('div');
+        this.overlay.className = 'overlay-painel';
+        document.body.appendChild(this.overlay);
+        this.analisarBtn = this.painelAnotacao.querySelector('.analisar-btn');
+        this.salvarBtn = this.painelAnotacao.querySelector('.salvar-anotacao');
+        this.analiseCalorias = this.painelAnotacao.querySelector('.analise-calorias');
+        this.listaAlimentos = this.painelAnotacao.querySelector('.lista-alimentos');
+        this.totalCalorias = this.painelAnotacao.querySelector('.total-calorias span');
 
         // Verificar se é a primeira visita
         if (!localStorage.getItem('visitedBefore')) {
@@ -23,6 +57,13 @@ class FureiADieta {
             this.welcomeDialog.style.display = 'none';
         }
 
+        // Adicionar propriedades para análise calórica
+        this.analisesPorNota = new Map();
+        this.carregarAnalises();
+
+        // Adicionar debounce para análise
+        this.debounceTimeout = null;
+
         this.inicializar();
     }
 
@@ -30,6 +71,8 @@ class FureiADieta {
         this.criarCalendario();
         this.configurarEventos();
         this.carregarDiasMarcados();
+        this.carregarAnotacoes();
+        this.carregarNotas();
     }
 
     configurarEventos() {
@@ -62,11 +105,11 @@ class FureiADieta {
         }
     }
 
-    criarNota() {
+    criarNota(notaSalva = null) {
         const hoje = new Date().toLocaleDateString();
         const ultimaNota = localStorage.getItem('ultimaNota');
 
-        if (ultimaNota === hoje) {
+        if (!notaSalva && ultimaNota === hoje) {
             alert('Você já registrou uma nota hoje!');
             return;
         }
@@ -74,18 +117,66 @@ class FureiADieta {
         const nota = document.createElement('div');
         nota.className = 'nota';
         
-        const agora = new Date();
+        const agora = notaSalva ? new Date(notaSalva.data) : new Date();
         const dataFormatada = agora.toLocaleDateString('pt-BR');
         const horaFormatada = agora.toLocaleTimeString('pt-BR');
         
         nota.innerHTML = `
-            <div class="timestamp">${dataFormatada} - ${horaFormatada}</div>
-            <div>Ops... Furei a dieta! 🍽️</div>
+            <div class="nota-header">
+                <div class="timestamp">${dataFormatada} - ${horaFormatada}</div>
+                <div class="drag-handle">⋮⋮</div>
+            </div>
+            <div class="nota-content">
+                <div>Ops... Furei a dieta! 🍽️</div>
+                <div class="nota-indicador">📝</div>
+            </div>
         `;
 
-        const rotacao = Math.random() * 20 - 10;
+        // Usar rotação salva ou gerar nova
+        const rotacao = notaSalva ? notaSalva.rotacao : Math.random() * 20 - 10;
         nota.style.setProperty('--rotacao', `${rotacao}deg`);
 
+        // Usar posição salva ou gerar nova
+        if (notaSalva) {
+            nota.style.left = `${notaSalva.posicao.x}px`;
+            nota.style.top = `${notaSalva.posicao.y}px`;
+        } else {
+            const posicao = this.gerarPosicaoValida();
+            nota.style.left = `${posicao.x}px`;
+            nota.style.top = `${posicao.y}px`;
+        }
+
+        document.body.appendChild(nota);
+        
+        const dataId = notaSalva ? notaSalva.id : agora.toISOString().split('T')[0];
+        nota.dataset.notaId = dataId;
+
+        if (!notaSalva) {
+            this.marcarDia(agora);
+            localStorage.setItem('ultimaNota', hoje);
+        }
+
+        setTimeout(() => {
+            this.tornarArrastavel(nota);
+        }, 500);
+
+        if (notaSalva && notaSalva.anotacao) {
+            nota.dataset.anotacao = notaSalva.anotacao;
+            const indicador = nota.querySelector('.nota-indicador');
+            indicador.style.display = 'block';
+        }
+
+        if (!notaSalva && !this.primeiraNotaCriada) {
+            this.mostrarDicaReset();
+            this.primeiraNotaCriada = true;
+            localStorage.setItem('primeiraNotaCriada', 'true');
+        }
+
+        nota.addEventListener('notaClick', () => this.abrirPainelAnotacao(nota));
+        this.salvarNotas(); // Salvar após criar
+    }
+
+    gerarPosicaoValida() {
         const footerHeight = document.querySelector('footer').offsetHeight;
         const maxX = window.innerWidth - 250;
         const maxY = window.innerHeight - footerHeight - 100;
@@ -115,81 +206,85 @@ class FureiADieta {
             tentativas++;
         }
 
-        nota.style.left = `${x}px`;
-        nota.style.top = `${y}px`;
+        return { x, y };
+    }
 
-        document.body.appendChild(nota);
-        
-        // Adicionar id único para a nota baseado na data
-        const dataId = agora.toISOString().split('T')[0];
-        nota.dataset.notaId = dataId;
+    salvarNotas() {
+        const notas = [];
+        document.querySelectorAll('.nota').forEach(nota => {
+            notas.push({
+                id: nota.dataset.notaId,
+                data: new Date(nota.dataset.notaId).toISOString(),
+                posicao: {
+                    x: parseInt(nota.style.left),
+                    y: parseInt(nota.style.top)
+                },
+                rotacao: parseInt(nota.style.getPropertyValue('--rotacao')),
+                anotacao: nota.dataset.anotacao || ''
+            });
+        });
+        localStorage.setItem('notas', JSON.stringify(notas));
+    }
 
-        // Marcar o dia primeiro
-        this.marcarDia(agora);
-
-        // Tornar arrastável após um pequeno delay para a animação de entrada
-        setTimeout(() => {
-            this.tornarArrastavel(nota);
-        }, 500); // Espera a animação de flutuar terminar
-
-        localStorage.setItem('ultimaNota', hoje);
-
-        // Se for a primeira nota, mostrar dica de reset
-        if (!this.primeiraNotaCriada) {
-            this.mostrarDicaReset();
-            this.primeiraNotaCriada = true;
-            localStorage.setItem('primeiraNotaCriada', 'true');
+    carregarNotas() {
+        const notasSalvas = localStorage.getItem('notas');
+        if (notasSalvas) {
+            const notas = JSON.parse(notasSalvas);
+            notas.forEach(nota => this.criarNota(nota));
         }
     }
 
     tornarArrastavel(elemento) {
-        let posicaoAtual = { x: 0, y: 0 };
-        let posicaoInicial = { x: 0, y: 0 };
+        const dragHandle = elemento.querySelector('.drag-handle');
+        const content = elemento.querySelector('.nota-content');
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
 
-        elemento.style.cursor = 'grab'; // Cursor indicando que pode arrastar
+        // Evento de clique apenas no conteúdo
+        content.addEventListener('click', (e) => {
+            if (!isDragging) {
+                this.abrirPainelAnotacao(elemento);
+            }
+        });
 
-        elemento.addEventListener('mousedown', iniciarArrasto);
+        // Arrasto apenas pelo handle
+        dragHandle.addEventListener('mousedown', iniciarArrasto);
         
         function iniciarArrasto(e) {
             e.preventDefault();
+            isDragging = true;
             
-            // Atualiza o estilo do cursor
+            const rect = elemento.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            
             elemento.style.cursor = 'grabbing';
-            
-            // Pega a posição inicial do mouse
-            posicaoInicial.x = e.clientX - posicaoAtual.x;
-            posicaoInicial.y = e.clientY - posicaoAtual.y;
-            
-            // Adiciona os listeners de movimento e soltura
             document.addEventListener('mousemove', arrastar);
             document.addEventListener('mouseup', pararArrasto);
-            
-            // Aumenta o z-index durante o arrasto
             elemento.style.zIndex = '1000';
         }
         
         function arrastar(e) {
+            if (!isDragging) return;
             e.preventDefault();
             
-            // Calcula a nova posição
-            posicaoAtual.x = e.clientX - posicaoInicial.x;
-            posicaoAtual.y = e.clientY - posicaoInicial.y;
+            const x = e.clientX - offsetX;
+            const y = e.clientY - offsetY;
             
-            // Aplica a nova posição
-            elemento.style.left = posicaoAtual.x + 'px';
-            elemento.style.top = posicaoAtual.y + 'px';
+            elemento.style.left = `${x}px`;
+            elemento.style.top = `${y}px`;
         }
         
+        const self = this;
+        
         function pararArrasto() {
-            // Restaura o cursor
-            elemento.style.cursor = 'grab';
-            
-            // Remove os listeners
+            isDragging = false;
+            elemento.style.cursor = 'default';
             document.removeEventListener('mousemove', arrastar);
             document.removeEventListener('mouseup', pararArrasto);
-            
-            // Restaura o z-index original
-            elemento.style.zIndex = '1';
+            elemento.style.zIndex = 'var(--z-nota)';
+            self.salvarNotas();
         }
     }
 
@@ -231,11 +326,30 @@ class FureiADieta {
         const diaElemento = this.calendario.querySelector(`[data-data="${dataFormatada}"]`);
         
         if (diaElemento) {
-            diaElemento.className = 'dia marcado';
+            // Adicionar classe com animação
+            diaElemento.className = 'dia';
+            requestAnimationFrame(() => {
+                diaElemento.classList.add('marcado', 'animando');
+            });
+
+            // Atualizar tooltip com resumo
+            const nota = document.querySelector(`.nota[data-nota-id="${dataFormatada}"]`);
+            const analise = this.analisesPorNota.get(dataFormatada);
+            
+            let resumo = `${data.toLocaleDateString('pt-BR')}`;
+            if (nota?.dataset.anotacao) {
+                resumo += `\n${nota.dataset.anotacao.slice(0, 50)}${nota.dataset.anotacao.length > 50 ? '...' : ''}`;
+            }
+            if (analise?.length > 0) {
+                const totalCalorias = analise.reduce((sum, a) => sum + a.calorias, 0);
+                resumo += `\n${totalCalorias} calorias`;
+            }
+            
+            diaElemento.dataset.tooltip = resumo;
+            
             this.diasMarcados.add(dataFormatada);
             this.salvarDiasMarcados();
 
-            // Adicionar evento de clique
             diaElemento.addEventListener('click', () => this.destacarNota(dataFormatada));
         }
     }
@@ -251,9 +365,14 @@ class FureiADieta {
 
             // Destacar a nota selecionada
             nota.style.zIndex = '5';
-            nota.classList.remove('saltando'); // Remove primeiro para poder adicionar novamente
-            void nota.offsetWidth; // Força um reflow
+            nota.classList.remove('saltando');
+            void nota.offsetWidth;
             nota.classList.add('saltando');
+
+            // Remover a classe após a animação
+            nota.addEventListener('animationend', () => {
+                nota.classList.remove('saltando');
+            }, { once: true });
         }
     }
 
@@ -282,12 +401,17 @@ class FureiADieta {
     }
 
     executarReset() {
+        // Limpar dados
         this.diasMarcados.clear();
         localStorage.removeItem('diasMarcados');
         localStorage.removeItem('ultimaNota');
+        localStorage.removeItem('notas');
+        localStorage.removeItem('analises'); // Precisamos adicionar esta linha
         
+        // Remover notas da tela
         document.querySelectorAll('.nota').forEach(nota => nota.remove());
         
+        // Limpar calendário
         document.querySelectorAll('.dia').forEach(dia => {
             dia.className = 'dia';
             dia.textContent = '';
@@ -378,7 +502,252 @@ class FureiADieta {
         
         this.cancelResetBtn.addEventListener('click', () => {
             this.resetDialog.style.display = 'none';
+            document.body.classList.remove('dialog-open');
         });
+    }
+
+    // Salvar análise calórica
+    salvarAnalise(notaId, analise) {
+        this.analisesPorNota.set(notaId, analise);
+        localStorage.setItem('analises', JSON.stringify(Array.from(this.analisesPorNota.entries())));
+    }
+
+    // Carregar análises salvas
+    carregarAnalises() {
+        const analisesSalvas = localStorage.getItem('analises');
+        if (analisesSalvas) {
+            this.analisesPorNota = new Map(JSON.parse(analisesSalvas));
+        }
+    }
+
+    // Atualizar botão com estado de loading
+    setLoadingState(button, isLoading) {
+        if (isLoading) {
+            button.disabled = true;
+            button.innerHTML = `
+                <div class="spinner"></div>
+                ${button.textContent}
+            `;
+            button.classList.add('loading');
+        } else {
+            button.disabled = false;
+            button.innerHTML = button.textContent;
+            button.classList.remove('loading');
+        }
+    }
+
+    async abrirPainelAnotacao(nota) {
+        const anotacaoAtual = nota.dataset.anotacao || '';
+        const textarea = this.painelAnotacao.querySelector('.campo-anotacao');
+        const salvarBtn = this.painelAnotacao.querySelector('.salvar-btn');
+        const analiseLoading = this.painelAnotacao.querySelector('.analise-loading');
+        const analiseVazia = this.painelAnotacao.querySelector('.analise-vazia');
+        
+        textarea.value = anotacaoAtual;
+        
+        let estadoAtual = {
+            texto: anotacaoAtual,
+            analise: this.analisesPorNota.get(nota.dataset.notaId),
+            modificado: false
+        };
+
+        const atualizarBotaoSalvar = () => {
+            const temTexto = textarea.value.trim().length > 0;
+            const textoMudou = textarea.value.trim() !== estadoAtual.texto;
+            salvarBtn.disabled = !temTexto || !textoMudou;
+            salvarBtn.classList.toggle('disabled', !temTexto || !textoMudou);
+        };
+
+        // Debounce para análise
+        const analisarTexto = () => {
+            if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+            
+            analiseLoading.style.display = 'flex';
+            analiseVazia.style.display = 'none';
+            this.listaAlimentos.style.display = 'none';
+            
+            this.debounceTimeout = setTimeout(() => {
+                const texto = textarea.value.trim();
+                const alimentos = this.analisarTexto(texto);
+                
+                analiseLoading.style.display = 'none';
+                
+                if (alimentos.length === 0) {
+                    analiseVazia.style.display = 'block';
+                    this.listaAlimentos.style.display = 'none';
+                    this.totalCalorias.style.display = 'none';
+                } else {
+                    analiseVazia.style.display = 'none';
+                    this.listaAlimentos.style.display = 'block';
+                    this.totalCalorias.style.display = 'block';
+                    this.atualizarAnaliseCalorias(alimentos);
+                    this.salvarAnalise(nota.dataset.notaId, alimentos);
+                    estadoAtual.analise = alimentos;
+                }
+            }, 500);
+        };
+
+        textarea.addEventListener('input', () => {
+            estadoAtual.modificado = true;
+            atualizarBotaoSalvar();
+            analisarTexto();
+        });
+
+        salvarBtn.onclick = async () => {
+            if (!textarea.value.trim()) return;
+            
+            const btnText = salvarBtn.querySelector('.btn-text');
+            const btnSpinner = salvarBtn.querySelector('.spinner');
+            
+            btnText.style.opacity = '0';
+            btnSpinner.style.display = 'block';
+            salvarBtn.disabled = true;
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                nota.dataset.anotacao = textarea.value;
+                const indicador = nota.querySelector('.nota-indicador');
+                indicador.style.display = 'block';
+                this.salvarAnotacoes();
+                
+                estadoAtual.texto = textarea.value.trim();
+                estadoAtual.modificado = false;
+                atualizarBotaoSalvar();
+                
+                // Feedback visual de sucesso
+                btnText.textContent = 'Salvo com sucesso! 🎉';
+                setTimeout(() => {
+                    btnText.textContent = 'Guardar essa memória 💝';
+                }, 2000);
+            } finally {
+                btnText.style.opacity = '1';
+                btnSpinner.style.display = 'none';
+                salvarBtn.disabled = false;
+            }
+        };
+
+        this.painelAnotacao.classList.add('aberto');
+        this.overlay.classList.add('visivel');
+
+        const fecharBtn = this.painelAnotacao.querySelector('.fechar-painel');
+
+        const fecharPainel = () => {
+            this.painelAnotacao.classList.remove('aberto');
+            this.overlay.classList.remove('visivel');
+        };
+
+        fecharBtn.onclick = fecharPainel;
+        this.overlay.onclick = fecharPainel;
+
+        textarea.focus();
+    }
+
+    salvarAnotacoes() {
+        const anotacoes = {};
+        document.querySelectorAll('.nota').forEach(nota => {
+            if (nota.dataset.anotacao) {
+                anotacoes[nota.dataset.notaId] = nota.dataset.anotacao;
+            }
+        });
+        localStorage.setItem('anotacoes', JSON.stringify(anotacoes));
+    }
+
+    carregarAnotacoes() {
+        const anotacoesSalvas = localStorage.getItem('anotacoes');
+        if (anotacoesSalvas) {
+            const anotacoes = JSON.parse(anotacoesSalvas);
+            document.querySelectorAll('.nota').forEach(nota => {
+                const id = nota.dataset.notaId;
+                if (anotacoes[id]) {
+                    nota.dataset.anotacao = anotacoes[id];
+                }
+            });
+        }
+    }
+
+    analisarTexto(texto) {
+        const alimentosEncontrados = [];
+        const textoLower = texto.toLowerCase();
+        
+        // Padrão para encontrar números seguidos de alimentos
+        // Exemplo: "2 brigadeiros", "meia pizza", "três hamburgueres"
+        const numerosEscritos = {
+            'um': 1, 'uma': 1,
+            'dois': 2, 'duas': 2,
+            'três': 3, 'tres': 3,
+            'quatro': 4,
+            'cinco': 5,
+            'meia': 0.5, 'meio': 0.5
+        };
+
+        for (const [alimento, info] of Object.entries(ALIMENTOS_DB)) {
+            // Procurar todas as ocorrências do alimento
+            const regex = new RegExp(`(\\d+|${Object.keys(numerosEscritos).join('|')})\\s*(${alimento}s?|${alimento})`, 'gi');
+            let match;
+            let encontrado = false;
+
+            while ((match = regex.exec(textoLower)) !== null) {
+                encontrado = true;
+                let quantidade = 1;
+
+                if (match[1]) {
+                    // Converter número escrito por extenso
+                    if (numerosEscritos[match[1]]) {
+                        quantidade = numerosEscritos[match[1]];
+                    } else {
+                        quantidade = parseInt(match[1]);
+                    }
+                }
+
+                alimentosEncontrados.push({
+                    nome: alimento,
+                    quantidade: quantidade,
+                    calorias: info.calorias * quantidade,
+                    emoji: info.emoji
+                });
+            }
+
+            // Se não encontrou com quantidade, procura sem
+            if (!encontrado && textoLower.includes(alimento)) {
+                alimentosEncontrados.push({
+                    nome: alimento,
+                    quantidade: 1,
+                    calorias: info.calorias,
+                    emoji: info.emoji
+                });
+            }
+        }
+
+        return alimentosEncontrados;
+    }
+
+    atualizarAnaliseCalorias(alimentos) {
+        if (alimentos.length === 0) {
+            this.analiseCalorias.style.display = 'none';
+            return;
+        }
+
+        this.analiseCalorias.style.display = 'block';
+        this.listaAlimentos.innerHTML = '';
+        let total = 0;
+
+        alimentos.forEach(alimento => {
+            const item = document.createElement('div');
+            item.className = 'alimento-item';
+            item.innerHTML = `
+                <span>
+                    ${alimento.emoji}
+                    <span class="alimento-nome">
+                        ${alimento.quantidade > 1 ? `${alimento.quantidade}× ` : ''}${alimento.nome}
+                    </span>
+                </span>
+                <span class="alimento-calorias">${alimento.calorias} kcal</span>
+            `;
+            this.listaAlimentos.appendChild(item);
+            total += alimento.calorias;
+        });
+
+        this.totalCalorias.innerHTML = `<strong>${total} kcal</strong>`;
     }
 }
 

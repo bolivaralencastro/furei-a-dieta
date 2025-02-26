@@ -72,6 +72,38 @@
         <div id="calendario"></div>
     </footer>
 
+    <!-- Painel de anotações -->
+    <div class="painel-anotacao" id="painelAnotacao">
+        <div class="painel-content">
+            <div class="painel-header">
+                <h3>Detalhes do Deslize 📝</h3>
+                <button class="fechar-painel">✕</button>
+            </div>
+            <p class="painel-descricao">Deslizes fazem parte da jornada! Conte mais sobre esse momento, vamos analisar tudo pra você. 💕</p>
+            <textarea 
+                placeholder="Por exemplo: Não resisti àquele brigadeiro delicioso da vovó! 🍫"
+                class="campo-anotacao"></textarea>
+            
+            <div class="analise-calorias">
+                <div class="analise-loading" style="display: none">
+                    <div class="spinner"></div>
+                    <span>Analisando seu texto...</span>
+                </div>
+                <div class="analise-vazia">
+                    <p>Conte quais alimentos você consumiu e eu calculo as calorias pra você! 🤗</p>
+                    <p class="dica-texto">Dica: Para um cálculo mais preciso, mencione as quantidades (ex: "2 brigadeiros")</p>
+                </div>
+                <div class="lista-alimentos"></div>
+                <div class="total-calorias"><span>0</span> kcal</div>
+            </div>
+
+            <button class="salvar-btn disabled">
+                <span class="btn-text">Guardar essa memória 💝</span>
+                <div class="spinner" style="display: none"></div>
+            </button>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
