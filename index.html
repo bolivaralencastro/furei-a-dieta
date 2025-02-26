@@ -11,7 +11,15 @@
     <header>
         <h1>Furei a Dieta</h1>
         <div class="header-controls">
-            <button id="resetBtn" title="Resetar calendário">🔄</button>
+            <div class="tooltip-container">
+                <button id="resetBtn" title="Resetar calendário">🔄</button>
+                <div class="tooltip" id="firstNoteTooltip">
+                    <p>Ei! 💕</p>
+                    <p>Essa primeira notinha foi só um teste? Você pode recomeçar clicando aqui!</p>
+                    <p>Depois disso, vamos começar pra valer, ok? 🌟</p>
+                    <button class="tooltip-button" id="closeTooltip">Entendi! 💪</button>
+                </div>
+            </div>
             <button id="toggleTheme">🌙</button>
         </div>
     </header>
@@ -37,6 +45,22 @@
                 <p class="motivation">Lembre-se: pequenos deslizes não definem sua jornada. O importante é seguir em frente! 💪</p>
             </div>
             <button class="dialog-button" id="startButton">Vamos começar!</button>
+        </div>
+    </div>
+
+    <!-- Dialog de confirmação de reset -->
+    <div class="dialog-overlay" id="resetDialog">
+        <div class="dialog">
+            <h2>Tem certeza? 🤔</h2>
+            <div class="dialog-content">
+                <p>Eita! Você está prestes a apagar todas as suas notinhas.</p>
+                <p>Às vezes é bom recomeçar, mas não se cobre tanto, ok? 💕</p>
+                
+                <div class="dialog-buttons">
+                    <button class="dialog-button secondary" id="cancelReset">Melhor não</button>
+                    <button class="dialog-button primary" id="confirmReset">Sim, quero recomeçar!</button>
+                </div>
+            </div>
         </div>
     </div>
 

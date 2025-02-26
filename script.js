@@ -9,6 +9,11 @@ class FureiADieta {
         this.diasMarcados = new Set();
         this.welcomeDialog = document.getElementById('welcomeDialog');
         this.startButton = document.getElementById('startButton');
+        this.primeiraNotaCriada = localStorage.getItem('primeiraNotaCriada') === 'true';
+        this.primeiroReset = true;
+        this.resetDialog = document.getElementById('resetDialog');
+        this.confirmResetBtn = document.getElementById('confirmReset');
+        this.cancelResetBtn = document.getElementById('cancelReset');
 
         // Verificar se é a primeira visita
         if (!localStorage.getItem('visitedBefore')) {
@@ -128,120 +133,64 @@ class FureiADieta {
         }, 500); // Espera a animação de flutuar terminar
 
         localStorage.setItem('ultimaNota', hoje);
+
+        // Se for a primeira nota, mostrar dica de reset
+        if (!this.primeiraNotaCriada) {
+            this.mostrarDicaReset();
+            this.primeiraNotaCriada = true;
+            localStorage.setItem('primeiraNotaCriada', 'true');
+        }
     }
 
     tornarArrastavel(elemento) {
-        let offsetX, offsetY;
-        let isDragging = false;
-        let ultimasBolinhasAfetadas = new Set();
+        let posicaoAtual = { x: 0, y: 0 };
+        let posicaoInicial = { x: 0, y: 0 };
 
-        elemento.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            elemento.classList.add('dragging');
-            
-            const rect = elemento.getBoundingClientRect();
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
-        });
+        elemento.style.cursor = 'grab'; // Cursor indicando que pode arrastar
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-
+        elemento.addEventListener('mousedown', iniciarArrasto);
+        
+        function iniciarArrasto(e) {
             e.preventDefault();
             
-            const pratoRect = this.btnPrato.getBoundingClientRect();
-            const notaRect = elemento.getBoundingClientRect();
+            // Atualiza o estilo do cursor
+            elemento.style.cursor = 'grabbing';
             
-            let x = e.clientX - offsetX;
-            let y = e.clientY - offsetY;
-
-            if (this.verificarSobreposicao(
-                {x, y, width: notaRect.width, height: notaRect.height},
-                pratoRect
-            )) {
-                return;
-            }
-
-            elemento.style.left = `${x}px`;
-            elemento.style.top = `${y}px`;
-
-            // Efeito líquido nas bolinhas
-            const bolinhasAtuais = new Set();
-            document.querySelectorAll('.dia').forEach(bolinha => {
-                const bolinhaRect = bolinha.getBoundingClientRect();
-                const centro = {
-                    x: bolinhaRect.left + bolinhaRect.width / 2,
-                    y: bolinhaRect.top + bolinhaRect.height / 2
-                };
-
-                const distancia = Math.hypot(
-                    centro.x - (x + notaRect.width / 2),
-                    centro.y - (y + notaRect.height / 2)
-                );
-
-                if (distancia < 100) { // Área de influência
-                    bolinhasAtuais.add(bolinha);
-                    
-                    // Calcular direção do efeito
-                    const angulo = Math.atan2(
-                        centro.y - (y + notaRect.height / 2),
-                        centro.x - (x + notaRect.width / 2)
-                    ) * 180 / Math.PI;
-
-                    // Remover classes anteriores
-                    bolinha.classList.remove(
-                        'liquido-top', 'liquido-bottom', 
-                        'liquido-left', 'liquido-right',
-                        'liquido-top-left', 'liquido-top-right',
-                        'liquido-bottom-left', 'liquido-bottom-right'
-                    );
-
-                    // Adicionar classe baseada na direção
-                    if (angulo > -22.5 && angulo <= 22.5) bolinha.classList.add('liquido-right');
-                    else if (angulo > 22.5 && angulo <= 67.5) bolinha.classList.add('liquido-bottom-right');
-                    else if (angulo > 67.5 && angulo <= 112.5) bolinha.classList.add('liquido-bottom');
-                    else if (angulo > 112.5 && angulo <= 157.5) bolinha.classList.add('liquido-bottom-left');
-                    else if (angulo > 157.5 || angulo <= -157.5) bolinha.classList.add('liquido-left');
-                    else if (angulo > -157.5 && angulo <= -112.5) bolinha.classList.add('liquido-top-left');
-                    else if (angulo > -112.5 && angulo <= -67.5) bolinha.classList.add('liquido-top');
-                    else if (angulo > -67.5 && angulo <= -22.5) bolinha.classList.add('liquido-top-right');
-
-                    bolinha.classList.add('liquido');
-                }
-            });
-
-            // Restaurar bolinhas que não estão mais sob influência
-            ultimasBolinhasAfetadas.forEach(bolinha => {
-                if (!bolinhasAtuais.has(bolinha)) {
-                    bolinha.classList.remove(
-                        'liquido',
-                        'liquido-top', 'liquido-bottom', 
-                        'liquido-left', 'liquido-right',
-                        'liquido-top-left', 'liquido-top-right',
-                        'liquido-bottom-left', 'liquido-bottom-right'
-                    );
-                }
-            });
-
-            ultimasBolinhasAfetadas = bolinhasAtuais;
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            elemento.classList.remove('dragging');
+            // Pega a posição inicial do mouse
+            posicaoInicial.x = e.clientX - posicaoAtual.x;
+            posicaoInicial.y = e.clientY - posicaoAtual.y;
             
-            // Restaurar todas as bolinhas
-            ultimasBolinhasAfetadas.forEach(bolinha => {
-                bolinha.classList.remove(
-                    'liquido',
-                    'liquido-top', 'liquido-bottom', 
-                    'liquido-left', 'liquido-right',
-                    'liquido-top-left', 'liquido-top-right',
-                    'liquido-bottom-left', 'liquido-bottom-right'
-                );
-            });
-            ultimasBolinhasAfetadas.clear();
-        });
+            // Adiciona os listeners de movimento e soltura
+            document.addEventListener('mousemove', arrastar);
+            document.addEventListener('mouseup', pararArrasto);
+            
+            // Aumenta o z-index durante o arrasto
+            elemento.style.zIndex = '1000';
+        }
+        
+        function arrastar(e) {
+            e.preventDefault();
+            
+            // Calcula a nova posição
+            posicaoAtual.x = e.clientX - posicaoInicial.x;
+            posicaoAtual.y = e.clientY - posicaoInicial.y;
+            
+            // Aplica a nova posição
+            elemento.style.left = posicaoAtual.x + 'px';
+            elemento.style.top = posicaoAtual.y + 'px';
+        }
+        
+        function pararArrasto() {
+            // Restaura o cursor
+            elemento.style.cursor = 'grab';
+            
+            // Remove os listeners
+            document.removeEventListener('mousemove', arrastar);
+            document.removeEventListener('mouseup', pararArrasto);
+            
+            // Restaura o z-index original
+            elemento.style.zIndex = '1';
+        }
     }
 
     verificarSobreposicao(rect1, rect2) {
@@ -320,18 +269,30 @@ class FureiADieta {
     }
 
     resetarCalendario() {
-        if (confirm('Tem certeza que deseja resetar o calendário? Todas as marcações serão perdidas.')) {
-            this.diasMarcados.clear();
-            localStorage.removeItem('diasMarcados');
-            localStorage.removeItem('ultimaNota');
-            
-            document.querySelectorAll('.nota').forEach(nota => nota.remove());
-            
-            document.querySelectorAll('.dia').forEach(dia => {
-                dia.className = 'dia';
-                dia.textContent = '';
-            });
+        if (this.primeiroReset) {
+            // Primeiro reset: executa direto sem confirmação
+            this.executarReset();
+            this.primeiroReset = false;
+            localStorage.setItem('primeiroReset', 'false');
+        } else {
+            // Mostrar dialog de confirmação
+            this.resetDialog.style.display = 'flex';
+            document.body.classList.add('dialog-open');
         }
+    }
+
+    executarReset() {
+        this.diasMarcados.clear();
+        localStorage.removeItem('diasMarcados');
+        localStorage.removeItem('ultimaNota');
+        
+        document.querySelectorAll('.nota').forEach(nota => nota.remove());
+        
+        document.querySelectorAll('.dia').forEach(dia => {
+            dia.className = 'dia';
+            dia.textContent = '';
+        });
+        document.body.classList.remove('dialog-open');
     }
 
     salvarDiasMarcados() {
@@ -371,8 +332,121 @@ class FureiADieta {
             localStorage.setItem('visitedBefore', 'true');
         });
     }
+
+    mostrarDicaReset() {
+        const dica = document.createElement('div');
+        dica.className = 'dica-reset';
+        dica.innerHTML = `
+            <div class="dica-conteudo">
+                <p>Ei! Foi só um teste? 😉</p>
+                <p>Você pode usar esse botão para resetar tudo e começar de verdade!</p>
+                <button class="dica-button">Entendi!</button>
+            </div>
+            <div class="dica-seta"></div>
+        `;
+
+        document.body.appendChild(dica);
+
+        // Posicionar a dica próxima ao botão de reset
+        const resetBtn = document.getElementById('resetBtn');
+        const resetRect = resetBtn.getBoundingClientRect();
+        
+        dica.style.position = 'fixed';
+        dica.style.top = `${resetRect.bottom + 10}px`;
+        dica.style.left = `${resetRect.left - 150}px`;
+
+        // Animar entrada
+        requestAnimationFrame(() => {
+            dica.classList.add('visivel');
+        });
+
+        // Fechar a dica
+        const fecharDica = () => {
+            dica.classList.add('saindo');
+            setTimeout(() => dica.remove(), 300);
+        };
+
+        dica.querySelector('.dica-button').addEventListener('click', fecharDica);
+    }
+
+    // Configurar eventos da dialog de reset
+    configurarResetDialog() {
+        this.confirmResetBtn.addEventListener('click', () => {
+            this.executarReset();
+            this.resetDialog.style.display = 'none';
+        });
+        
+        this.cancelResetBtn.addEventListener('click', () => {
+            this.resetDialog.style.display = 'none';
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new FureiADieta();
+    app.configurarResetDialog();
 });
+
+function createSmokeEffect(x, y) {
+    const numParticles = 12;
+    
+    for (let i = 0; i < numParticles; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'smoke-particle';
+        particle.style.left = `${x}px`;
+        particle.style.top = `${y}px`;
+        
+        // Direção aleatória para cada partícula
+        const angle = (i / numParticles) * 360;
+        const distance = 50 + Math.random() * 30;
+        const xMove = Math.cos(angle * Math.PI / 180) * distance;
+        const yMove = Math.sin(angle * Math.PI / 180) * distance;
+        
+        particle.style.setProperty('--x', `${xMove}px`);
+        particle.style.setProperty('--y', `${yMove}px`);
+        
+        document.body.appendChild(particle);
+        
+        // Animar e remover
+        particle.style.animation = 'smoke 0.8s ease-out forwards';
+        setTimeout(() => particle.remove(), 800);
+    }
+}
+
+// Quando uma nota for removida
+function removeNota(nota) {
+    const rect = nota.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
+    createSmokeEffect(x, y);
+    nota.remove();
+}
+
+// Para controlar a tooltip da primeira nota
+let isFirstNote = true;
+
+function showFirstNoteTooltip() {
+    if (isFirstNote) {
+        const tooltip = document.getElementById('firstNoteTooltip');
+        setTimeout(() => {
+            tooltip.classList.add('show');
+        }, 800); // Delay de 0.8s após a primeira nota ser criada
+        
+        isFirstNote = false;
+    }
+}
+
+// Para o botão de reset na primeira vez
+let isFirstReset = true;
+
+function handleReset() {
+    if (isFirstReset) {
+        // Não mostra confirmação na primeira vez
+        resetCalendar();
+        isFirstReset = false;
+    } else {
+        // Mostra confirmação nas próximas vezes
+        showResetConfirmation();
+    }
+}

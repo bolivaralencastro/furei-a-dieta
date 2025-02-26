@@ -92,12 +92,14 @@ main {
 
 .nota {
     position: absolute;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
     padding: 12px;
     border-radius: 4px;
     min-width: 150px;
     max-width: 200px;
     animation: flutuar 0.5s ease-out;
-    cursor: move;
     z-index: var(--z-nota);
     font-size: 0.9em;
     transform: rotate(var(--rotacao));
@@ -378,4 +380,211 @@ body.light-mode .dia.contraste,
 
 body.dialog-open {
     overflow: hidden;
+}
+
+.dica-reset {
+    position: fixed;
+    background: var(--bg-light);
+    color: var(--text-light);
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    width: 280px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+body.dark-mode .dica-reset {
+    background: #2a2a2a;
+    color: var(--text-dark);
+}
+
+.dica-reset.visivel {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.dica-reset.saindo {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.dica-conteudo {
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.dica-conteudo p {
+    margin: 0.5em 0;
+}
+
+.dica-seta {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--bg-light);
+}
+
+body.dark-mode .dica-seta {
+    border-bottom-color: #2a2a2a;
+}
+
+.dica-button {
+    background: #ff4444;
+    color: white;
+    border: none;
+    padding: 0.5em 1em;
+    border-radius: 4px;
+    margin-top: 0.5em;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.dica-button:hover {
+    background: #ff6666;
+}
+
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    width: 280px;
+    background: var(--accent-color);
+    color: var(--text-color);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    font-size: 0.9rem;
+    animation: fadeIn 0.3s ease-in-out 3s both;
+    z-index: 1000;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    right: 20px;
+    border-width: 10px 10px 0;
+    border-style: solid;
+    border-color: var(--accent-color) transparent transparent;
+}
+
+.tooltip p {
+    margin: 8px 0;
+    line-height: 1.4;
+}
+
+.tooltip-button {
+    background: var(--background-color);
+    color: var(--text-color);
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    margin-top: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: transform 0.2s;
+}
+
+.tooltip-button:hover {
+    transform: scale(1.05);
+}
+
+.tooltip.show {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Efeito de fumaça */
+.smoke-particle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: rgba(200, 200, 200, 0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: var(--z-nota);
+}
+
+@keyframes smoke {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.5;
+    }
+    100% {
+        transform: translate(var(--x), var(--y)) scale(2);
+        opacity: 0;
+    }
+}
+
+.nota:active {
+    cursor: grabbing;
+}
+
+/* Estilos para os botões da dialog */
+.dialog-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.dialog-button {
+    padding: 12px 20px;
+    border-radius: 25px;
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.dialog-button:hover {
+    transform: scale(1.05);
+}
+
+.dialog-button:active {
+    transform: scale(0.95);
+}
+
+.dialog-button.primary {
+    background: #ff4444;
+    color: white;
+}
+
+.dialog-button.secondary {
+    background: rgba(128, 128, 128, 0.1);
+    color: var(--text-color);
+}
+
+/* Ajustes específicos para a dialog de reset */
+#resetDialog .dialog {
+    max-width: 400px;
+}
+
+#resetDialog h2 {
+    margin-bottom: 16px;
+    font-size: 1.5rem;
+}
+
+#resetDialog p {
+    margin: 12px 0;
+    line-height: 1.5;
+    font-size: 1rem;
 }
